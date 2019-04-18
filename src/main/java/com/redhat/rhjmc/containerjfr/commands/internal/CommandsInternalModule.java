@@ -25,6 +25,7 @@ public abstract class CommandsInternalModule {
     @Binds @IntoSet abstract Command bindDisconnectCommand(DisconnectCommand command);
     @Binds @IntoSet abstract Command bindDumpCommand(DumpCommand command);
     @Binds @IntoSet abstract Command bindExitCommand(ExitCommand command);
+    @Binds @IntoSet abstract Command bindMBeansCommand(MBeansCommand command);
     @Binds @IntoSet abstract Command bindHelpCommand(HelpCommand command);
     @Binds @IntoSet abstract Command bindHostnameCommand(HostnameCommand command);
     @Binds @IntoSet abstract Command bindIpCommand(IpCommand command);
