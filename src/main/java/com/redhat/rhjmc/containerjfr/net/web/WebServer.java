@@ -21,11 +21,11 @@ import java.util.concurrent.Executors;
 
 import com.redhat.rhjmc.containerjfr.core.log.Logger;
 import com.redhat.rhjmc.containerjfr.core.net.JFRConnection;
+import com.redhat.rhjmc.containerjfr.core.reports.ReportGenerator;
 import com.redhat.rhjmc.containerjfr.core.sys.Environment;
 import com.redhat.rhjmc.containerjfr.net.ConnectionListener;
 import com.redhat.rhjmc.containerjfr.net.HttpServer;
 import com.redhat.rhjmc.containerjfr.net.NetworkConfiguration;
-import com.redhat.rhjmc.containerjfr.net.internal.reports.ReportGenerator;
 
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
@@ -267,7 +267,7 @@ public class WebServer implements ConnectionListener {
                 }
             }
         });
-        
+
         try {
             future.join();
             worker.shutdownNow();
@@ -358,7 +358,7 @@ public class WebServer implements ConnectionListener {
             } else {
                 writeInputStream(recording.get(), ctx.response());
             }
-  
+
             ctx.response().end();
             recording.get().close();
         } catch (FlightRecorderException e) {
