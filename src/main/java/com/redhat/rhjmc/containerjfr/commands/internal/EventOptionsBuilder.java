@@ -2,7 +2,9 @@ package com.redhat.rhjmc.containerjfr.commands.internal;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Supplier;
+
+import com.redhat.rhjmc.containerjfr.core.net.JFRConnection;
+import com.redhat.rhjmc.containerjfr.core.tui.ClientWriter;
 
 import org.openjdk.jmc.common.unit.IConstrainedMap;
 import org.openjdk.jmc.common.unit.IConstraint;
@@ -12,31 +14,24 @@ import org.openjdk.jmc.flightrecorder.configuration.events.EventOptionID;
 import org.openjdk.jmc.flightrecorder.configuration.events.IEventTypeID;
 import org.openjdk.jmc.rjmx.services.jfr.FlightRecorderException;
 import org.openjdk.jmc.rjmx.services.jfr.IEventTypeInfo;
-import org.openjdk.jmc.rjmx.services.jfr.internal.FlightRecorderServiceV2;
-
-import com.redhat.rhjmc.containerjfr.core.net.JFRConnection;
-import com.redhat.rhjmc.containerjfr.core.tui.ClientWriter;
 
 class EventOptionsBuilder {
 
-    private final boolean isV2;
+    private final JFRConnection connection;
     private final IMutableConstrainedMap<EventOptionID> map;
     private Map<IEventTypeID, Map<String, IOptionDescriptor<?>>> knownTypes;
     private Map<String, IEventTypeID> eventIds;
 
-    private EventOptionsBuilder(ClientWriter cw, JFRConnection connection) throws FlightRecorderException {
-        this(cw, connection, () -> FlightRecorderServiceV2.isAvailable(connection.getHandle()));
-    }
-
-    // Testing only
-    EventOptionsBuilder(ClientWriter cw, JFRConnection connection, Supplier<Boolean> v2) throws FlightRecorderException {
-        this.isV2 = v2.get();
+    // Testing-only constructor
+    EventOptionsBuilder(ClientWriter cw, JFRConnection connection) throws FlightRecorderException {
+        this.connection = connection;
         this.map = connection.getService().getDefaultEventOptions().emptyWithSameConstraints();
         knownTypes = new HashMap<>();
         eventIds = new HashMap<>();
 
-        if (!isV2) {
+        if (connection.isV1()) {
             cw.println("Flight Recorder V1 is not yet supported");
+            return;
         }
 
         for (IEventTypeInfo eventTypeInfo : connection.getService().getAvailableEventTypes()) {
@@ -67,7 +62,7 @@ class EventOptionsBuilder {
     }
 
     IConstrainedMap<EventOptionID> build() {
-        if (!isV2) {
+        if (connection.isV1()) {
             return null;
         }
         return map;
