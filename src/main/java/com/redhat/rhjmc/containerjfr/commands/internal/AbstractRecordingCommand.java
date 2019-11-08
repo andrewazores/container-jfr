@@ -3,11 +3,11 @@ package com.redhat.rhjmc.containerjfr.commands.internal;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.redhat.rhjmc.containerjfr.core.tui.ClientWriter;
+
 import org.openjdk.jmc.common.unit.IConstrainedMap;
 import org.openjdk.jmc.flightrecorder.configuration.events.EventOptionID;
 import org.openjdk.jmc.rjmx.services.jfr.IEventTypeInfo;
-
-import com.redhat.rhjmc.containerjfr.core.tui.ClientWriter;
 
 abstract class AbstractRecordingCommand extends AbstractConnectedCommand {
 
@@ -16,13 +16,10 @@ abstract class AbstractRecordingCommand extends AbstractConnectedCommand {
 
     protected final ClientWriter cw;
     protected final EventOptionsBuilder.Factory eventOptionsBuilderFactory;
-    protected final RecordingOptionsBuilderFactory recordingOptionsBuilderFactory;
 
-    protected AbstractRecordingCommand(ClientWriter cw, EventOptionsBuilder.Factory eventOptionsBuilderFactory,
-            RecordingOptionsBuilderFactory recordingOptionsBuilderFactory) {
+    protected AbstractRecordingCommand(ClientWriter cw, EventOptionsBuilder.Factory eventOptionsBuilderFactory) {
         this.cw = cw;
         this.eventOptionsBuilderFactory = eventOptionsBuilderFactory;
-        this.recordingOptionsBuilderFactory = recordingOptionsBuilderFactory;
     }
 
     protected IConstrainedMap<EventOptionID> enableEvents(String events) throws Exception {

@@ -8,7 +8,9 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 
 import com.redhat.rhjmc.containerjfr.commands.SerializableCommand;
+import com.redhat.rhjmc.containerjfr.core.RecordingOptionsCustomizer;
 import com.redhat.rhjmc.containerjfr.core.tui.ClientWriter;
+
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,16 +23,15 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class RecordingOptionsCustomizerCommandTest {
+class RecordingOptionsCommandTest {
 
-    RecordingOptionsCustomizerCommand command;
-    @Mock
-    ClientWriter cw;
+    RecordingOptionsCommand command;
+    @Mock ClientWriter cw;
     @Mock RecordingOptionsCustomizer customizer;
 
     @BeforeEach
     void setup() {
-        command = new RecordingOptionsCustomizerCommand(cw, customizer);
+        command = new RecordingOptionsCommand(cw, () -> customizer);
     }
 
     @Test

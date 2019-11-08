@@ -1,24 +1,36 @@
 package com.redhat.rhjmc.containerjfr.commands.internal;
 
+import java.util.function.Supplier;
+
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
-import org.openjdk.jmc.common.unit.IConstrainedMap;
-
 import com.redhat.rhjmc.containerjfr.commands.SerializableCommand;
-import com.redhat.rhjmc.containerjfr.net.web.WebServer;
+import com.redhat.rhjmc.containerjfr.core.RecordingOptionsCustomizer;
 import com.redhat.rhjmc.containerjfr.core.tui.ClientWriter;
+import com.redhat.rhjmc.containerjfr.net.web.WebServer;
+
+import org.openjdk.jmc.common.unit.IConstrainedMap;
 
 @Singleton
 class StartRecordingCommand extends AbstractRecordingCommand implements SerializableCommand {
 
     private final WebServer exporter;
+    private final Supplier<RecordingOptionsCustomizer> recordingOptionsCustomizerSupplier;
 
     @Inject
-    StartRecordingCommand(ClientWriter cw, WebServer exporter, EventOptionsBuilder.Factory eventOptionsBuilderFactory,
-            RecordingOptionsBuilderFactory recordingOptionsBuilderFactory) {
-        super(cw, eventOptionsBuilderFactory, recordingOptionsBuilderFactory);
+    StartRecordingCommand(ClientWriter cw, WebServer exporter, EventOptionsBuilder.Factory eventOptionsBuilderFactory) {
+        super(cw, eventOptionsBuilderFactory);
         this.exporter = exporter;
+        this.recordingOptionsCustomizerSupplier = () -> new RecordingOptionsCustomizer(connection);
+    }
+
+    // testing-only constructor
+    StartRecordingCommand(ClientWriter cw, WebServer exporter, EventOptionsBuilder.Factory eventOptionsBuilderFactory,
+            Supplier<RecordingOptionsCustomizer> recordingOptionsCustomizerSupplier) {
+        super(cw, eventOptionsBuilderFactory);
+        this.exporter = exporter;
+        this.recordingOptionsCustomizerSupplier = recordingOptionsCustomizerSupplier;
     }
 
     @Override
@@ -41,9 +53,9 @@ class StartRecordingCommand extends AbstractRecordingCommand implements Serializ
             return;
         }
 
-        IConstrainedMap<String> recordingOptions = recordingOptionsBuilderFactory.create(getService())
-            .name(name)
-            .build();
+        IConstrainedMap<String> recordingOptions = recordingOptionsCustomizerSupplier.get()
+            .set(RecordingOptionsCustomizer.OptionKey.NAME, name)
+            .asMap();
         this.exporter.addRecording(getService().start(recordingOptions, enableEvents(events)));
     }
 
@@ -57,9 +69,9 @@ class StartRecordingCommand extends AbstractRecordingCommand implements Serializ
                 return new FailureOutput(String.format("Recording with name \"%s\" already exists", name));
             }
 
-            IConstrainedMap<String> recordingOptions = recordingOptionsBuilderFactory.create(getService())
-                .name(name)
-                .build();
+            IConstrainedMap<String> recordingOptions = recordingOptionsCustomizerSupplier.get()
+                .set(RecordingOptionsCustomizer.OptionKey.NAME, name)
+                .asMap();
             this.exporter.addRecording(getService().start(recordingOptions, enableEvents(events)));
             return new StringOutput(this.exporter.getDownloadURL(name));
         } catch (Exception e) {

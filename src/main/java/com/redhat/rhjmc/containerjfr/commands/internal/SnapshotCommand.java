@@ -1,26 +1,37 @@
 package com.redhat.rhjmc.containerjfr.commands.internal;
 
+import java.util.function.Supplier;
+
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
-import org.openjdk.jmc.flightrecorder.configuration.recording.RecordingOptionsBuilder;
-import org.openjdk.jmc.rjmx.services.jfr.IRecordingDescriptor;
-
 import com.redhat.rhjmc.containerjfr.commands.SerializableCommand;
+import com.redhat.rhjmc.containerjfr.core.RecordingOptionsCustomizer;
 import com.redhat.rhjmc.containerjfr.core.jmc.CopyRecordingDescriptor;
 import com.redhat.rhjmc.containerjfr.core.tui.ClientWriter;
 import com.redhat.rhjmc.containerjfr.net.web.WebServer;
+
+import org.openjdk.jmc.common.unit.IConstrainedMap;
+import org.openjdk.jmc.rjmx.services.jfr.IRecordingDescriptor;
 
 @Singleton
 class SnapshotCommand extends AbstractRecordingCommand implements SerializableCommand {
 
     private final WebServer exporter;
+    private final Supplier<RecordingOptionsCustomizer> recordingOptionsCustomizerSupplier;
 
     @Inject
-    SnapshotCommand(ClientWriter cw, WebServer exporter, EventOptionsBuilder.Factory eventOptionsBuilderFactory,
-            RecordingOptionsBuilderFactory recordingOptionsBuilderFactory) {
-        super(cw, eventOptionsBuilderFactory, recordingOptionsBuilderFactory);
+    SnapshotCommand(ClientWriter cw, WebServer exporter, EventOptionsBuilder.Factory eventOptionsBuilderFactory) {
+        super(cw, eventOptionsBuilderFactory);
         this.exporter = exporter;
+        this.recordingOptionsCustomizerSupplier = () -> new RecordingOptionsCustomizer(connection);
+    }
+
+    // testing-only constructor
+    SnapshotCommand(ClientWriter cw, WebServer exporter, EventOptionsBuilder.Factory eventOptionsBuilderFactory, Supplier<RecordingOptionsCustomizer> recordingOptionsCustomizerSupplier) {
+        super(cw, eventOptionsBuilderFactory);
+        this.exporter = exporter;
+        this.recordingOptionsCustomizerSupplier = recordingOptionsCustomizerSupplier;
     }
 
     @Override
@@ -35,10 +46,10 @@ class SnapshotCommand extends AbstractRecordingCommand implements SerializableCo
         String rename = String.format("%s-%d", descriptor.getName().toLowerCase(), descriptor.getId());
         cw.println(String.format("Latest snapshot: \"%s\"", rename));
 
-        RecordingOptionsBuilder recordingOptionsBuilder = recordingOptionsBuilderFactory.create(getService());
-            recordingOptionsBuilder.name(rename);
-
-        getService().updateRecordingOptions(descriptor, recordingOptionsBuilder.build());
+        IConstrainedMap<String> recordingOptions = recordingOptionsCustomizerSupplier.get()
+            .set(RecordingOptionsCustomizer.OptionKey.NAME, rename)
+            .asMap();
+        getService().updateRecordingOptions(descriptor, recordingOptions);
         exporter.addRecording(new RenamedSnapshotDescriptor(rename, descriptor));
     }
 
@@ -49,10 +60,10 @@ class SnapshotCommand extends AbstractRecordingCommand implements SerializableCo
 
             String rename = String.format("%s-%d", descriptor.getName().toLowerCase(), descriptor.getId());
 
-            RecordingOptionsBuilder recordingOptionsBuilder = recordingOptionsBuilderFactory.create(getService());
-                recordingOptionsBuilder.name(rename);
-
-            getService().updateRecordingOptions(descriptor, recordingOptionsBuilder.build());
+            IConstrainedMap<String> recordingOptions = recordingOptionsCustomizerSupplier.get()
+                .set(RecordingOptionsCustomizer.OptionKey.NAME, rename)
+                .asMap();
+            getService().updateRecordingOptions(descriptor, recordingOptions);
             exporter.addRecording(new RenamedSnapshotDescriptor(rename, descriptor));
 
             return new StringOutput(rename);

@@ -1,5 +1,6 @@
 package com.redhat.rhjmc.containerjfr.commands.internal;
 
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -7,21 +8,26 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import com.redhat.rhjmc.containerjfr.commands.SerializableCommand;
-import com.redhat.rhjmc.containerjfr.commands.internal.RecordingOptionsCustomizer.OptionKey;
+import com.redhat.rhjmc.containerjfr.core.RecordingOptionsCustomizer;
 import com.redhat.rhjmc.containerjfr.core.tui.ClientWriter;
 
 @Singleton
-class RecordingOptionsCustomizerCommand extends AbstractConnectedCommand implements SerializableCommand {
+class RecordingOptionsCommand extends AbstractConnectedCommand implements SerializableCommand {
 
     private static final Pattern OPTIONS_PATTERN = Pattern.compile("^([\\w]+)=([\\w\\.-_]+)$", Pattern.MULTILINE);
     private static final Pattern UNSET_PATTERN = Pattern.compile("^-([\\w]+)$", Pattern.MULTILINE);
 
     private final ClientWriter cw;
-    private final RecordingOptionsCustomizer customizer;
+    private final Supplier<RecordingOptionsCustomizer> supplier;
 
-    @Inject RecordingOptionsCustomizerCommand(ClientWriter cw, RecordingOptionsCustomizer customizer) {
+    @Inject RecordingOptionsCommand(ClientWriter cw) {
         this.cw = cw;
-        this.customizer = customizer;
+        this.supplier = () -> new RecordingOptionsCustomizer(connection);
+    }
+
+    RecordingOptionsCommand(ClientWriter cw, Supplier<RecordingOptionsCustomizer> supplier) {
+        this.cw = cw;
+        this.supplier = supplier;
     }
 
     @Override
@@ -32,18 +38,19 @@ class RecordingOptionsCustomizerCommand extends AbstractConnectedCommand impleme
     @Override
     public void execute(String[] args) throws Exception {
         String options = args[0];
+        RecordingOptionsCustomizer customizer = supplier.get();
 
         Matcher optionsMatcher = OPTIONS_PATTERN.matcher(options);
         if (optionsMatcher.find()) {
             String option = optionsMatcher.group(1);
             String value = optionsMatcher.group(2);
-            OptionKey.fromOptionName(option).ifPresent(k -> customizer.set(k, value));
+            RecordingOptionsCustomizer.OptionKey.fromOptionName(option).ifPresent(k -> customizer.set(k, value));
             return;
         }
 
         Matcher unsetMatcher = UNSET_PATTERN.matcher(options);
         unsetMatcher.find();
-        OptionKey.fromOptionName(unsetMatcher.group(1)).ifPresent(customizer::unset);
+        RecordingOptionsCustomizer.OptionKey.fromOptionName(unsetMatcher.group(1)).ifPresent(customizer::unset);
     }
 
     @Override
@@ -74,7 +81,7 @@ class RecordingOptionsCustomizerCommand extends AbstractConnectedCommand impleme
         }
 
         String option = (optionsMatch ? optionsMatcher : unsetMatcher).group(1);
-        boolean recognizedOption = OptionKey.fromOptionName(option)
+        boolean recognizedOption = RecordingOptionsCustomizer.OptionKey.fromOptionName(option)
             .isPresent();
         if (!recognizedOption) {
             cw.println(String.format("%s is an unrecognized or unsupported option", option));

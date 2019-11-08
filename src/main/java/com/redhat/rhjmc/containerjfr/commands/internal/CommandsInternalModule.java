@@ -5,17 +5,16 @@ import java.util.Set;
 import javax.annotation.Nullable;
 import javax.inject.Singleton;
 
-import org.openjdk.jmc.flightrecorder.configuration.recording.RecordingOptionsBuilder;
-
-import dagger.Binds;
-import dagger.Module;
-import dagger.Provides;
-import dagger.multibindings.IntoSet;
 import com.redhat.rhjmc.containerjfr.ExecutionMode;
 import com.redhat.rhjmc.containerjfr.commands.Command;
 import com.redhat.rhjmc.containerjfr.commands.CommandRegistry;
 import com.redhat.rhjmc.containerjfr.commands.SerializableCommandRegistry;
 import com.redhat.rhjmc.containerjfr.core.tui.ClientWriter;
+
+import dagger.Binds;
+import dagger.Module;
+import dagger.Provides;
+import dagger.multibindings.IntoSet;
 
 @Module
 public abstract class CommandsInternalModule {
@@ -36,7 +35,7 @@ public abstract class CommandsInternalModule {
     @Binds @IntoSet abstract Command bindPingCommand(PingCommand command);
     @Binds @IntoSet abstract Command bindPortScanCommand(ScanTargetsCommand command);
     @Binds @IntoSet abstract Command bindPrintUrlCommand(PrintUrlCommand command);
-    @Binds @IntoSet abstract Command bindRecordingOptionsCustomizerCommand(RecordingOptionsCustomizerCommand command);
+    @Binds @IntoSet abstract Command bindRecordingOptionsCommand(RecordingOptionsCommand command);
     @Binds @IntoSet abstract Command bindSaveRecordingCommand(SaveRecordingCommand command);
     @Binds @IntoSet abstract Command bindSearchEventsCommand(SearchEventsCommand command);
     @Binds @IntoSet abstract Command bindSnapshotCommand(SnapshotCommand command);
@@ -48,12 +47,6 @@ public abstract class CommandsInternalModule {
     @Binds @IntoSet abstract Command bindWaitForDownloadCommand(WaitForDownloadCommand command);
     @Provides static EventOptionsBuilder.Factory provideEventOptionsBuilderFactory(ClientWriter cw) {
         return new EventOptionsBuilder.Factory(cw);
-    }
-    @Provides static RecordingOptionsBuilderFactory provideRecordingOptionsBuilderFactory(RecordingOptionsCustomizer customizer) {
-        return service -> customizer.apply(new RecordingOptionsBuilder(service));
-    }
-    @Provides @Singleton static RecordingOptionsCustomizer provideRecordingOptionsCustomizer(ClientWriter cw) {
-        return new RecordingOptionsCustomizer(cw);
     }
     @Provides @Nullable @Singleton static CommandRegistry provideCommandRegistry(ExecutionMode mode, ClientWriter cw, Set<Command> commands) {
         if (mode.equals(ExecutionMode.WEBSOCKET)) {

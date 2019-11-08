@@ -14,7 +14,7 @@ public abstract class ConnectionListenerModule {
     @Binds @IntoSet abstract ConnectionListener bindListCommand(ListCommand command);
     @Binds @IntoSet abstract ConnectionListener bindListEventTypesCommand(ListEventTypesCommand command);
     @Binds @IntoSet abstract ConnectionListener bindListRecordingOptionsCommand(ListRecordingOptionsCommand command);
-    @Binds @IntoSet abstract ConnectionListener bindRecordingOptionsCustomizerCommand(RecordingOptionsCustomizerCommand command);
+    @Binds @IntoSet abstract ConnectionListener bindRecordingOptionsCommand(RecordingOptionsCommand command);
     @Binds @IntoSet abstract ConnectionListener bindSaveRecordingCommand(SaveRecordingCommand command);
     @Binds @IntoSet abstract ConnectionListener bindSearchEventsCommand(SearchEventsCommand command);
     @Binds @IntoSet abstract ConnectionListener bindSnapshotCommand(SnapshotCommand command);

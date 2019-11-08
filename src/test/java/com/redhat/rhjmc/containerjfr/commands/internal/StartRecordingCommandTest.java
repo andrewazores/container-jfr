@@ -12,9 +12,11 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import com.redhat.rhjmc.containerjfr.commands.SerializableCommand;
+import com.redhat.rhjmc.containerjfr.core.RecordingOptionsCustomizer;
 import com.redhat.rhjmc.containerjfr.core.net.JFRConnection;
 import com.redhat.rhjmc.containerjfr.core.tui.ClientWriter;
 import com.redhat.rhjmc.containerjfr.net.web.WebServer;
+
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +30,6 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openjdk.jmc.common.unit.IConstrainedMap;
 import org.openjdk.jmc.flightrecorder.configuration.events.EventOptionID;
-import org.openjdk.jmc.flightrecorder.configuration.recording.RecordingOptionsBuilder;
 import org.openjdk.jmc.rjmx.services.jfr.IFlightRecorderService;
 import org.openjdk.jmc.rjmx.services.jfr.IRecordingDescriptor;
 
@@ -36,20 +37,16 @@ import org.openjdk.jmc.rjmx.services.jfr.IRecordingDescriptor;
 class StartRecordingCommandTest {
 
     StartRecordingCommand command;
-    @Mock
-    ClientWriter cw;
-    @Mock
-    JFRConnection connection;
+    @Mock ClientWriter cw;
+    @Mock JFRConnection connection;
     @Mock IFlightRecorderService service;
-    @Mock
-    WebServer exporter;
+    @Mock WebServer exporter;
     @Mock EventOptionsBuilder.Factory eventOptionsBuilderFactory;
-    @Mock RecordingOptionsBuilderFactory recordingOptionsBuilderFactory;
+    @Mock RecordingOptionsCustomizer recordingOptionsCustomizer;
 
     @BeforeEach
     void setup() {
-        command = new StartRecordingCommand(cw, exporter, eventOptionsBuilderFactory,
-                recordingOptionsBuilderFactory);
+        command = new StartRecordingCommand(cw, exporter, eventOptionsBuilderFactory, () -> recordingOptionsCustomizer);
         command.connectionChanged(connection);
     }
 
@@ -92,10 +89,8 @@ class StartRecordingCommandTest {
         when(connection.getService()).thenReturn(service);
         when(service.getAvailableRecordings()).thenReturn(Collections.emptyList());
         IConstrainedMap<String> recordingOptions = mock(IConstrainedMap.class);
-        RecordingOptionsBuilder recordingOptionsBuilder = mock(RecordingOptionsBuilder.class);
-        when(recordingOptionsBuilderFactory.create(Mockito.any())).thenReturn(recordingOptionsBuilder);
-        when(recordingOptionsBuilder.build()).thenReturn(recordingOptions);
-        when(recordingOptionsBuilder.name(Mockito.any())).thenReturn(recordingOptionsBuilder);
+        when(recordingOptionsCustomizer.set(Mockito.any(), Mockito.anyString())).thenReturn(recordingOptionsCustomizer);
+        when(recordingOptionsCustomizer.asMap()).thenReturn(recordingOptions);
         EventOptionsBuilder builder = mock(EventOptionsBuilder.class);
         when(eventOptionsBuilderFactory.create(Mockito.any())).thenReturn(builder);
         IConstrainedMap<EventOptionID> events = mock(IConstrainedMap.class);
@@ -110,11 +105,12 @@ class StartRecordingCommandTest {
 
         command.execute(new String[]{ "foo", "foo.Bar:enabled=true" });
 
+        ArgumentCaptor<RecordingOptionsCustomizer.OptionKey> keyCaptor = ArgumentCaptor.forClass(RecordingOptionsCustomizer.OptionKey.class);
         ArgumentCaptor<String> nameCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<IConstrainedMap<String>> recordingOptionsCaptor = ArgumentCaptor.forClass(IConstrainedMap.class);
         ArgumentCaptor<IConstrainedMap<EventOptionID>> eventsCaptor = ArgumentCaptor.forClass(IConstrainedMap.class);
         ArgumentCaptor<IRecordingDescriptor> descriptorCaptor = ArgumentCaptor.forClass(IRecordingDescriptor.class);
-        verify(recordingOptionsBuilder).name(nameCaptor.capture());
+        verify(recordingOptionsCustomizer).set(keyCaptor.capture(), nameCaptor.capture());
         verify(service).getAvailableRecordings();
         verify(service).start(recordingOptionsCaptor.capture(), eventsCaptor.capture());
         verify(exporter).addRecording(descriptorCaptor.capture());
@@ -124,6 +120,7 @@ class StartRecordingCommandTest {
         IConstrainedMap<EventOptionID> actualEvents = eventsCaptor.getValue();
         IRecordingDescriptor recordingDescriptor = descriptorCaptor.getValue();
 
+        MatcherAssert.assertThat(keyCaptor.getValue(), Matchers.is(RecordingOptionsCustomizer.OptionKey.NAME));
         MatcherAssert.assertThat(actualName, Matchers.equalTo("foo"));
         MatcherAssert.assertThat(recordingDescriptor, Matchers.sameInstance(descriptor));
         MatcherAssert.assertThat(actualEvents, Matchers.sameInstance(events));
@@ -148,10 +145,8 @@ class StartRecordingCommandTest {
         when(connection.getService()).thenReturn(service);
         when(service.getAvailableRecordings()).thenReturn(Collections.emptyList());
         IConstrainedMap<String> recordingOptions = mock(IConstrainedMap.class);
-        RecordingOptionsBuilder recordingOptionsBuilder = mock(RecordingOptionsBuilder.class);
-        when(recordingOptionsBuilderFactory.create(Mockito.any())).thenReturn(recordingOptionsBuilder);
-        when(recordingOptionsBuilder.build()).thenReturn(recordingOptions);
-        when(recordingOptionsBuilder.name(Mockito.any())).thenReturn(recordingOptionsBuilder);
+        when(recordingOptionsCustomizer.set(Mockito.any(), Mockito.anyString())).thenReturn(recordingOptionsCustomizer);
+        when(recordingOptionsCustomizer.asMap()).thenReturn(recordingOptions);
         EventOptionsBuilder builder = mock(EventOptionsBuilder.class);
         when(eventOptionsBuilderFactory.create(Mockito.any())).thenReturn(builder);
         IConstrainedMap<EventOptionID> events = mock(IConstrainedMap.class);
@@ -169,11 +164,12 @@ class StartRecordingCommandTest {
         MatcherAssert.assertThat(out, Matchers.instanceOf(SerializableCommand.StringOutput.class));
         MatcherAssert.assertThat(out.getPayload(), Matchers.equalTo("example-url"));
 
+        ArgumentCaptor<RecordingOptionsCustomizer.OptionKey> keyCaptor = ArgumentCaptor.forClass(RecordingOptionsCustomizer.OptionKey.class);
         ArgumentCaptor<String> nameCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<IConstrainedMap<String>> recordingOptionsCaptor = ArgumentCaptor.forClass(IConstrainedMap.class);
         ArgumentCaptor<IConstrainedMap<EventOptionID>> eventsCaptor = ArgumentCaptor.forClass(IConstrainedMap.class);
         ArgumentCaptor<IRecordingDescriptor> descriptorCaptor = ArgumentCaptor.forClass(IRecordingDescriptor.class);
-        verify(recordingOptionsBuilder).name(nameCaptor.capture());
+        verify(recordingOptionsCustomizer).set(keyCaptor.capture(), nameCaptor.capture());
         verify(service).getAvailableRecordings();
         verify(service).start(recordingOptionsCaptor.capture(), eventsCaptor.capture());
         verify(exporter).addRecording(descriptorCaptor.capture());
@@ -183,6 +179,7 @@ class StartRecordingCommandTest {
         IConstrainedMap<EventOptionID> actualEvents = eventsCaptor.getValue();
         IRecordingDescriptor recordingDescriptor = descriptorCaptor.getValue();
 
+        MatcherAssert.assertThat(keyCaptor.getValue(), Matchers.is(RecordingOptionsCustomizer.OptionKey.NAME));
         MatcherAssert.assertThat(actualName, Matchers.equalTo("foo"));
         MatcherAssert.assertThat(recordingDescriptor, Matchers.sameInstance(descriptor));
         MatcherAssert.assertThat(actualEvents, Matchers.sameInstance(events));

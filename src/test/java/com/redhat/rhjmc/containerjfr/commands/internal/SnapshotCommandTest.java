@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import com.redhat.rhjmc.containerjfr.commands.SerializableCommand;
+import com.redhat.rhjmc.containerjfr.core.RecordingOptionsCustomizer;
 import com.redhat.rhjmc.containerjfr.core.net.JFRConnection;
 import com.redhat.rhjmc.containerjfr.core.tui.ClientWriter;
 import com.redhat.rhjmc.containerjfr.net.web.WebServer;
@@ -24,7 +25,6 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openjdk.jmc.common.unit.IConstrainedMap;
-import org.openjdk.jmc.flightrecorder.configuration.recording.RecordingOptionsBuilder;
 import org.openjdk.jmc.rjmx.services.jfr.FlightRecorderException;
 import org.openjdk.jmc.rjmx.services.jfr.IFlightRecorderService;
 import org.openjdk.jmc.rjmx.services.jfr.IRecordingDescriptor;
@@ -33,20 +33,16 @@ import org.openjdk.jmc.rjmx.services.jfr.IRecordingDescriptor;
 class SnapshotCommandTest {
 
     SnapshotCommand command;
-    @Mock
-    ClientWriter cw;
-    @Mock
-    JFRConnection connection;
+    @Mock ClientWriter cw;
+    @Mock JFRConnection connection;
     @Mock IFlightRecorderService service;
-    @Mock
-    WebServer exporter;
+    @Mock WebServer exporter;
     @Mock EventOptionsBuilder.Factory eventOptionsBuilderFactory;
-    @Mock RecordingOptionsBuilderFactory recordingOptionsBuilderFactory;
+    @Mock RecordingOptionsCustomizer recordingOptionsCustomizer;
 
     @BeforeEach
     void setup() {
-        command = new SnapshotCommand(cw, exporter, eventOptionsBuilderFactory,
-                recordingOptionsBuilderFactory);
+        command = new SnapshotCommand(cw, exporter, eventOptionsBuilderFactory, () -> recordingOptionsCustomizer);
         command.connectionChanged(connection);
     }
 
@@ -76,10 +72,9 @@ class SnapshotCommandTest {
         IRecordingDescriptor snapshot = mock(IRecordingDescriptor.class);
         when(connection.getService()).thenReturn(service);
         when(service.getSnapshotRecording()).thenReturn(snapshot);
-        RecordingOptionsBuilder recordingOptionsBuilder = mock(RecordingOptionsBuilder.class);
-        when(recordingOptionsBuilderFactory.create(Mockito.any())).thenReturn(recordingOptionsBuilder);
         IConstrainedMap<String> builtMap = mock(IConstrainedMap.class);
-        when(recordingOptionsBuilder.build()).thenReturn(builtMap);
+        when(recordingOptionsCustomizer.set(Mockito.any(), Mockito.anyString())).thenReturn(recordingOptionsCustomizer);
+        when(recordingOptionsCustomizer.asMap()).thenReturn(builtMap);
 
         when(snapshot.getName()).thenReturn("Snapshot");
         when(snapshot.getId()).thenReturn(1L);
@@ -106,10 +101,9 @@ class SnapshotCommandTest {
         IRecordingDescriptor snapshot = mock(IRecordingDescriptor.class);
         when(connection.getService()).thenReturn(service);
         when(service.getSnapshotRecording()).thenReturn(snapshot);
-        RecordingOptionsBuilder recordingOptionsBuilder = mock(RecordingOptionsBuilder.class);
-        when(recordingOptionsBuilderFactory.create(Mockito.any())).thenReturn(recordingOptionsBuilder);
         IConstrainedMap<String> builtMap = mock(IConstrainedMap.class);
-        when(recordingOptionsBuilder.build()).thenReturn(builtMap);
+        when(recordingOptionsCustomizer.set(Mockito.any(), Mockito.anyString())).thenReturn(recordingOptionsCustomizer);
+        when(recordingOptionsCustomizer.asMap()).thenReturn(builtMap);
 
         when(snapshot.getName()).thenReturn("Snapshot");
         when(snapshot.getId()).thenReturn(1L);

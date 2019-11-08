@@ -17,6 +17,7 @@ import java.util.Collections;
 import com.redhat.rhjmc.containerjfr.TestBase;
 import com.redhat.rhjmc.containerjfr.core.net.JFRConnection;
 import com.redhat.rhjmc.containerjfr.core.tui.ClientWriter;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,11 +36,10 @@ class AbstractRecordingCommandTest extends TestBase {
     AbstractRecordingCommand command;
     @Mock JFRConnection connection;
     @Mock EventOptionsBuilder.Factory eventOptionsBuilderFactory;
-    @Mock RecordingOptionsBuilderFactory recordingOptionsBuilderFactory;
 
     @BeforeEach
     void setup() {
-        command = new BaseRecordingCommand(mockClientWriter, eventOptionsBuilderFactory, recordingOptionsBuilderFactory);
+        command = new BaseRecordingCommand(mockClientWriter, eventOptionsBuilderFactory);
     }
 
     @ParameterizedTest
@@ -110,9 +110,8 @@ class AbstractRecordingCommandTest extends TestBase {
     }
 
     static class BaseRecordingCommand extends AbstractRecordingCommand {
-        BaseRecordingCommand(ClientWriter cw, EventOptionsBuilder.Factory eventOptionsBuilderFactory,
-                             RecordingOptionsBuilderFactory recordingOptionsBuilderFactory) {
-            super(cw, eventOptionsBuilderFactory, recordingOptionsBuilderFactory);
+        BaseRecordingCommand(ClientWriter cw, EventOptionsBuilder.Factory eventOptionsBuilderFactory) {
+            super(cw, eventOptionsBuilderFactory);
         }
 
         @Override
