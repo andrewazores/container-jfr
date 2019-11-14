@@ -1,13 +1,15 @@
 package com.redhat.rhjmc.containerjfr.commands.internal;
 
-import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import com.redhat.rhjmc.containerjfr.commands.SerializableCommand;
+import com.redhat.rhjmc.containerjfr.core.EventOptionsCustomizer;
 import com.redhat.rhjmc.containerjfr.core.RecordingOptionsCustomizer;
+import com.redhat.rhjmc.containerjfr.core.net.JFRConnection;
 import com.redhat.rhjmc.containerjfr.core.tui.ClientWriter;
 import com.redhat.rhjmc.containerjfr.net.web.WebServer;
 
@@ -20,15 +22,15 @@ class DumpCommand extends AbstractRecordingCommand implements SerializableComman
     private final Supplier<RecordingOptionsCustomizer> recordingOptionsCustomizerSupplier;
 
     @Inject
-    DumpCommand(ClientWriter cw, WebServer exporter, EventOptionsBuilder.Factory eventOptionsBuilderFactory) {
-        super(cw, eventOptionsBuilderFactory);
+    DumpCommand(ClientWriter cw, WebServer exporter) {
+        super(cw, EventOptionsCustomizer::new);
         this.exporter = exporter;
         this.recordingOptionsCustomizerSupplier = () -> new RecordingOptionsCustomizer(connection);
     }
 
     // testing-only constructor
-    DumpCommand(ClientWriter cw, WebServer exporter, EventOptionsBuilder.Factory eventOptionsBuilderFactory, Supplier<RecordingOptionsCustomizer> recordingOptionsCustomizerSupplier) {
-        super(cw, eventOptionsBuilderFactory);
+    DumpCommand(ClientWriter cw, WebServer exporter, Function<JFRConnection, EventOptionsCustomizer> eventOptionsCustomizerSupplier, Supplier<RecordingOptionsCustomizer> recordingOptionsCustomizerSupplier) {
+        super(cw, eventOptionsCustomizerSupplier);
         this.exporter = exporter;
         this.recordingOptionsCustomizerSupplier = recordingOptionsCustomizerSupplier;
     }

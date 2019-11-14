@@ -45,9 +45,6 @@ public abstract class CommandsInternalModule {
     @Binds @IntoSet abstract Command bindWaitCommand(WaitCommand command);
     @Binds @IntoSet abstract Command bindWaitForCommand(WaitForCommand command);
     @Binds @IntoSet abstract Command bindWaitForDownloadCommand(WaitForDownloadCommand command);
-    @Provides static EventOptionsBuilder.Factory provideEventOptionsBuilderFactory(ClientWriter cw) {
-        return new EventOptionsBuilder.Factory(cw);
-    }
     @Provides @Nullable @Singleton static CommandRegistry provideCommandRegistry(ExecutionMode mode, ClientWriter cw, Set<Command> commands) {
         if (mode.equals(ExecutionMode.WEBSOCKET)) {
             return null;

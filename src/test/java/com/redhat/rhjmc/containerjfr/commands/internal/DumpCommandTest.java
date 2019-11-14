@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import com.redhat.rhjmc.containerjfr.commands.SerializableCommand;
+import com.redhat.rhjmc.containerjfr.core.EventOptionsCustomizer;
 import com.redhat.rhjmc.containerjfr.core.RecordingOptionsCustomizer;
 import com.redhat.rhjmc.containerjfr.core.net.JFRConnection;
 import com.redhat.rhjmc.containerjfr.core.tui.ClientWriter;
@@ -39,12 +40,12 @@ class DumpCommandTest {
     @Mock WebServer exporter;
     @Mock JFRConnection connection;
     @Mock IFlightRecorderService service;
-    @Mock EventOptionsBuilder.Factory eventOptionsBuilderFactory;
+    @Mock EventOptionsCustomizer eventOptionsCustomizer;
     @Mock RecordingOptionsCustomizer recordingOptionsCustomizer;
 
     @BeforeEach
     void setup() {
-        command = new DumpCommand(cw, exporter, eventOptionsBuilderFactory, () -> recordingOptionsCustomizer);
+        command = new DumpCommand(cw, exporter, unused -> eventOptionsCustomizer, () -> recordingOptionsCustomizer);
         command.connectionChanged(connection);
     }
 
@@ -90,10 +91,8 @@ class DumpCommandTest {
         IConstrainedMap<String> recordingOptions = mock(IConstrainedMap.class);
         when(recordingOptionsCustomizer.set(Mockito.any(), Mockito.anyString())).thenReturn(recordingOptionsCustomizer);
         when(recordingOptionsCustomizer.asMap()).thenReturn(recordingOptions);
-        EventOptionsBuilder builder = mock(EventOptionsBuilder.class);
-        when(eventOptionsBuilderFactory.create(Mockito.any())).thenReturn(builder);
         IConstrainedMap<EventOptionID> events = mock(IConstrainedMap.class);
-        when(builder.build()).thenReturn(events);
+        when(eventOptionsCustomizer.asMap()).thenReturn(events);
 
         IRecordingDescriptor descriptor = mock(IRecordingDescriptor.class);
         when(service.start(Mockito.any(), Mockito.any())).thenReturn(descriptor);
@@ -132,8 +131,8 @@ class DumpCommandTest {
         ArgumentCaptor<String> eventCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> optionCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> valueCaptor = ArgumentCaptor.forClass(String.class);
-        verify(builder).addEvent(eventCaptor.capture(), optionCaptor.capture(), valueCaptor.capture());
-        verify(builder).build();
+        verify(eventOptionsCustomizer).set(eventCaptor.capture(), optionCaptor.capture(), valueCaptor.capture());
+        verify(eventOptionsCustomizer).asMap();
 
         MatcherAssert.assertThat(eventCaptor.getValue(), Matchers.equalTo("foo.Bar"));
         MatcherAssert.assertThat(optionCaptor.getValue(),Matchers.equalTo("enabled"));
@@ -151,10 +150,8 @@ class DumpCommandTest {
         IConstrainedMap<String> recordingOptions = mock(IConstrainedMap.class);
         when(recordingOptionsCustomizer.set(Mockito.any(), Mockito.anyString())).thenReturn(recordingOptionsCustomizer);
         when(recordingOptionsCustomizer.asMap()).thenReturn(recordingOptions);
-        EventOptionsBuilder builder = mock(EventOptionsBuilder.class);
-        when(eventOptionsBuilderFactory.create(Mockito.any())).thenReturn(builder);
         IConstrainedMap<EventOptionID> events = mock(IConstrainedMap.class);
-        when(builder.build()).thenReturn(events);
+        when(eventOptionsCustomizer.asMap()).thenReturn(events);
 
         IRecordingDescriptor descriptor = mock(IRecordingDescriptor.class);
         when(service.start(Mockito.any(), Mockito.any())).thenReturn(descriptor);
@@ -194,8 +191,8 @@ class DumpCommandTest {
         ArgumentCaptor<String> eventCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> optionCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> valueCaptor = ArgumentCaptor.forClass(String.class);
-        verify(builder).addEvent(eventCaptor.capture(), optionCaptor.capture(), valueCaptor.capture());
-        verify(builder).build();
+        verify(eventOptionsCustomizer).set(eventCaptor.capture(), optionCaptor.capture(), valueCaptor.capture());
+        verify(eventOptionsCustomizer).asMap();
 
         MatcherAssert.assertThat(eventCaptor.getValue(), Matchers.equalTo("foo.Bar"));
         MatcherAssert.assertThat(optionCaptor.getValue(),Matchers.equalTo("enabled"));

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import com.redhat.rhjmc.containerjfr.commands.SerializableCommand;
+import com.redhat.rhjmc.containerjfr.core.EventOptionsCustomizer;
 import com.redhat.rhjmc.containerjfr.core.RecordingOptionsCustomizer;
 import com.redhat.rhjmc.containerjfr.core.net.JFRConnection;
 import com.redhat.rhjmc.containerjfr.core.tui.ClientWriter;
@@ -37,12 +38,12 @@ class SnapshotCommandTest {
     @Mock JFRConnection connection;
     @Mock IFlightRecorderService service;
     @Mock WebServer exporter;
-    @Mock EventOptionsBuilder.Factory eventOptionsBuilderFactory;
+    @Mock EventOptionsCustomizer eventOptionsCustomizer;
     @Mock RecordingOptionsCustomizer recordingOptionsCustomizer;
 
     @BeforeEach
     void setup() {
-        command = new SnapshotCommand(cw, exporter, eventOptionsBuilderFactory, () -> recordingOptionsCustomizer);
+        command = new SnapshotCommand(cw, exporter, unused -> eventOptionsCustomizer, () -> recordingOptionsCustomizer);
         command.connectionChanged(connection);
     }
 

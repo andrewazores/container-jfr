@@ -8,13 +8,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.function.Function;
 
 import com.redhat.rhjmc.containerjfr.TestBase;
+import com.redhat.rhjmc.containerjfr.core.EventOptionsCustomizer;
 import com.redhat.rhjmc.containerjfr.core.net.JFRConnection;
 import com.redhat.rhjmc.containerjfr.core.tui.ClientWriter;
 
@@ -24,7 +25,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openjdk.jmc.flightrecorder.configuration.events.IEventTypeID;
 import org.openjdk.jmc.rjmx.services.jfr.IEventTypeInfo;
@@ -35,11 +35,11 @@ class AbstractRecordingCommandTest extends TestBase {
 
     AbstractRecordingCommand command;
     @Mock JFRConnection connection;
-    @Mock EventOptionsBuilder.Factory eventOptionsBuilderFactory;
+    @Mock EventOptionsCustomizer customizer;
 
     @BeforeEach
     void setup() {
-        command = new BaseRecordingCommand(mockClientWriter, eventOptionsBuilderFactory);
+        command = new BaseRecordingCommand(mockClientWriter, unused -> customizer);
     }
 
     @ParameterizedTest
@@ -68,29 +68,18 @@ class AbstractRecordingCommandTest extends TestBase {
 
     @Test
     void shouldBuildSelectedEventMap() throws Exception {
-        verifyZeroInteractions(eventOptionsBuilderFactory);
-
-        EventOptionsBuilder builder = mock(EventOptionsBuilder.class);
-        when(eventOptionsBuilderFactory.create(Mockito.any())).thenReturn(builder);
-
         command.enableEvents("foo.Bar$Inner:prop=some,bar.Baz$Inner2:key=val,jdk.CPULoad:enabled=true");
 
-        verify(builder).addEvent("foo.Bar$Inner", "prop", "some");
-        verify(builder).addEvent("bar.Baz$Inner2", "key", "val");
-        verify(builder).addEvent("jdk.CPULoad", "enabled", "true");
-        verify(builder).build();
+        verify(customizer).set("foo.Bar$Inner", "prop", "some");
+        verify(customizer).set("bar.Baz$Inner2", "key", "val");
+        verify(customizer).set("jdk.CPULoad", "enabled", "true");
+        verify(customizer).asMap();
 
-        verifyNoMoreInteractions(builder);
-        verifyNoMoreInteractions(eventOptionsBuilderFactory);
+        verifyNoMoreInteractions(customizer);
     }
 
     @Test
     void shouldBuildAllEventMap() throws Exception {
-        verifyZeroInteractions(eventOptionsBuilderFactory);
-
-        EventOptionsBuilder builder = mock(EventOptionsBuilder.class);
-        when(eventOptionsBuilderFactory.create(Mockito.any())).thenReturn(builder);
-
         IEventTypeInfo mockEvent = mock(IEventTypeInfo.class);
         IEventTypeID mockEventTypeId = mock(IEventTypeID.class);
         when(mockEventTypeId.getFullKey()).thenReturn("com.example.Event");
@@ -102,16 +91,15 @@ class AbstractRecordingCommandTest extends TestBase {
         command.connectionChanged(connection);
         command.enableEvents("ALL");
 
-        verify(builder).addEvent("com.example.Event", "enabled", "true");
-        verify(builder).build();
+        verify(customizer).set("com.example.Event", "enabled", "true");
+        verify(customizer).asMap();
 
-        verifyNoMoreInteractions(builder);
-        verifyNoMoreInteractions(eventOptionsBuilderFactory);
+        verifyNoMoreInteractions(customizer);
     }
 
     static class BaseRecordingCommand extends AbstractRecordingCommand {
-        BaseRecordingCommand(ClientWriter cw, EventOptionsBuilder.Factory eventOptionsBuilderFactory) {
-            super(cw, eventOptionsBuilderFactory);
+        BaseRecordingCommand(ClientWriter cw, Function<JFRConnection, EventOptionsCustomizer> eventOptionsCustomizerSupplier) {
+            super(cw, eventOptionsCustomizerSupplier);
         }
 
         @Override

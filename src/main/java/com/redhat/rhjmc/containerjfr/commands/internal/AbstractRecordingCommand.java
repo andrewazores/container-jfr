@@ -1,8 +1,11 @@
 package com.redhat.rhjmc.containerjfr.commands.internal;
 
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.redhat.rhjmc.containerjfr.core.EventOptionsCustomizer;
+import com.redhat.rhjmc.containerjfr.core.net.JFRConnection;
 import com.redhat.rhjmc.containerjfr.core.tui.ClientWriter;
 
 import org.openjdk.jmc.common.unit.IConstrainedMap;
@@ -15,11 +18,11 @@ abstract class AbstractRecordingCommand extends AbstractConnectedCommand {
     private static final Pattern EVENTS_PATTERN = Pattern.compile("([\\w\\.\\$]+):([\\w]+)=([\\w\\d\\.]+)");
 
     protected final ClientWriter cw;
-    protected final EventOptionsBuilder.Factory eventOptionsBuilderFactory;
+    protected final Function<JFRConnection, EventOptionsCustomizer> eventOptionsCustomizerSupplier;
 
-    protected AbstractRecordingCommand(ClientWriter cw, EventOptionsBuilder.Factory eventOptionsBuilderFactory) {
+    protected AbstractRecordingCommand(ClientWriter cw, Function<JFRConnection, EventOptionsCustomizer> eventOptionsCustomizerSupplier) {
         this.cw = cw;
-        this.eventOptionsBuilderFactory = eventOptionsBuilderFactory;
+        this.eventOptionsCustomizerSupplier = eventOptionsCustomizerSupplier;
     }
 
     protected IConstrainedMap<EventOptionID> enableEvents(String events) throws Exception {
@@ -31,17 +34,17 @@ abstract class AbstractRecordingCommand extends AbstractConnectedCommand {
     }
 
     protected IConstrainedMap<EventOptionID> enableAllEvents() throws Exception {
-        EventOptionsBuilder builder = eventOptionsBuilderFactory.create(connection);
+        EventOptionsCustomizer customizer = eventOptionsCustomizerSupplier.apply(connection);
 
         for (IEventTypeInfo eventTypeInfo : getService().getAvailableEventTypes()) {
-            builder.addEvent(eventTypeInfo.getEventTypeID().getFullKey(), "enabled", "true");
+            customizer.set(eventTypeInfo.getEventTypeID().getFullKey(), "enabled", "true");
         }
 
-        return builder.build();
+        return customizer.asMap();
     }
 
     protected IConstrainedMap<EventOptionID> enableSelectedEvents(String events) throws Exception {
-        EventOptionsBuilder builder = eventOptionsBuilderFactory.create(connection);
+        EventOptionsCustomizer customizer = eventOptionsCustomizerSupplier.apply(connection);
 
         Matcher matcher = EVENTS_PATTERN.matcher(events);
         while (matcher.find()) {
@@ -49,10 +52,10 @@ abstract class AbstractRecordingCommand extends AbstractConnectedCommand {
             String option = matcher.group(2);
             String value = matcher.group(3);
 
-            builder.addEvent(eventTypeId, option, value);
+            customizer.set(eventTypeId, option, value);
         }
 
-        return builder.build();
+        return customizer.asMap();
     }
 
     protected boolean validateEvents(String events) {
