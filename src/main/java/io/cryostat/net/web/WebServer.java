@@ -54,6 +54,7 @@ import java.util.Set;
 
 import org.openjdk.jmc.rjmx.services.jfr.FlightRecorderException;
 
+import io.cryostat.MainModule;
 import io.cryostat.core.log.Logger;
 import io.cryostat.core.net.JFRConnection;
 import io.cryostat.net.AuthManager;
@@ -68,6 +69,10 @@ import io.cryostat.net.web.http.api.v2.ApiException;
 import io.cryostat.util.HttpStatusCodeIdentifier;
 
 import com.google.gson.Gson;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Scope;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.ext.web.Route;
@@ -88,6 +93,8 @@ public class WebServer {
     private final Gson gson;
     private final AuthManager auth;
     private final Logger logger;
+    protected final OpenTelemetry telemetry;
+    protected final Tracer tracer;
 
     WebServer(
             HttpServer server,
@@ -103,6 +110,8 @@ public class WebServer {
         this.gson = gson;
         this.auth = auth;
         this.logger = logger;
+        this.telemetry = MainModule.nonDIProvideOpenTelemetry();
+        this.tracer = telemetry.getTracer(getClass().getCanonicalName());
     }
 
     public void start() throws FlightRecorderException, SocketException, UnknownHostException {
@@ -112,59 +121,68 @@ public class WebServer {
         // error page handler
         Handler<RoutingContext> failureHandler =
                 ctx -> {
-                    HttpStatusException exception;
-                    if (ctx.failure() instanceof HttpStatusException) {
-                        exception = (HttpStatusException) ctx.failure();
-                    } else {
-                        exception = new HttpStatusException(500, ctx.failure());
-                    }
-
-                    if (!HttpStatusCodeIdentifier.isServerErrorCode(exception.getStatusCode())) {
-                        logger.warn(exception);
-                    } else {
-                        logger.error(exception);
-                    }
-
-                    if (exception.getStatusCode() == 401) {
-                        ctx.response().putHeader(AUTH_SCHEME_HEADER, auth.getScheme().toString());
-                    }
-
-                    ctx.response().setStatusCode(exception.getStatusCode());
-
-                    if (exception instanceof ApiException) {
-                        ApiException ex = (ApiException) exception;
-                        String apiStatus =
-                                ex.getApiStatus() != null
-                                        ? ex.getApiStatus()
-                                        : EnglishReasonPhraseCatalog.INSTANCE.getReason(
-                                                ex.getStatusCode(), null);
-                        ApiErrorResponse resp =
-                                new ApiErrorResponse(
-                                        new ApiMeta(HttpMimeType.PLAINTEXT, apiStatus),
-                                        new ApiErrorData(ex.getFailureReason()));
-                        ctx.response()
-                                .putHeader(HttpHeaders.CONTENT_TYPE, HttpMimeType.JSON.mime())
-                                .end(gson.toJson(resp));
-                    } else {
-                        // kept for V1 API handler compatibility
-                        String payload =
-                                exception.getPayload() != null
-                                        ? exception.getPayload()
-                                        : exception.getMessage();
-
-                        String accept = ctx.request().getHeader(HttpHeaders.ACCEPT);
-                        if (accept.contains(HttpMimeType.JSON.mime())
-                                && accept.indexOf(HttpMimeType.JSON.mime())
-                                        < accept.indexOf(HttpMimeType.PLAINTEXT.mime())) {
-                            ctx.response()
-                                    .putHeader(HttpHeaders.CONTENT_TYPE, HttpMimeType.JSON.mime())
-                                    .end(gson.toJson(Map.of("message", payload)));
-                            return;
+                    Span span = tracer.spanBuilder("WebServer Failure Handler").startSpan();
+                    try (Scope scope = span.makeCurrent()) {
+                        HttpStatusException exception;
+                        if (ctx.failure() instanceof HttpStatusException) {
+                            exception = (HttpStatusException) ctx.failure();
+                        } else {
+                            exception = new HttpStatusException(500, ctx.failure());
                         }
 
-                        ctx.response()
-                                .putHeader(HttpHeaders.CONTENT_TYPE, HttpMimeType.PLAINTEXT.mime())
-                                .end(payload);
+                        if (!HttpStatusCodeIdentifier.isServerErrorCode(
+                                exception.getStatusCode())) {
+                            logger.warn(exception);
+                        } else {
+                            logger.error(exception);
+                        }
+
+                        if (exception.getStatusCode() == 401) {
+                            ctx.response()
+                                    .putHeader(AUTH_SCHEME_HEADER, auth.getScheme().toString());
+                        }
+
+                        ctx.response().setStatusCode(exception.getStatusCode());
+
+                        if (exception instanceof ApiException) {
+                            ApiException ex = (ApiException) exception;
+                            String apiStatus =
+                                    ex.getApiStatus() != null
+                                            ? ex.getApiStatus()
+                                            : EnglishReasonPhraseCatalog.INSTANCE.getReason(
+                                                    ex.getStatusCode(), null);
+                            ApiErrorResponse resp =
+                                    new ApiErrorResponse(
+                                            new ApiMeta(HttpMimeType.PLAINTEXT, apiStatus),
+                                            new ApiErrorData(ex.getFailureReason()));
+                            ctx.response()
+                                    .putHeader(HttpHeaders.CONTENT_TYPE, HttpMimeType.JSON.mime())
+                                    .end(gson.toJson(resp));
+                        } else {
+                            // kept for V1 API handler compatibility
+                            String payload =
+                                    exception.getPayload() != null
+                                            ? exception.getPayload()
+                                            : exception.getMessage();
+
+                            String accept = ctx.request().getHeader(HttpHeaders.ACCEPT);
+                            if (accept.contains(HttpMimeType.JSON.mime())
+                                    && accept.indexOf(HttpMimeType.JSON.mime())
+                                            < accept.indexOf(HttpMimeType.PLAINTEXT.mime())) {
+                                ctx.response()
+                                        .putHeader(
+                                                HttpHeaders.CONTENT_TYPE, HttpMimeType.JSON.mime())
+                                        .end(gson.toJson(Map.of("message", payload)));
+                                return;
+                            }
+
+                            ctx.response()
+                                    .putHeader(
+                                            HttpHeaders.CONTENT_TYPE, HttpMimeType.PLAINTEXT.mime())
+                                    .end(payload);
+                        }
+                    } finally {
+                        span.end();
                     }
                 };
 
@@ -196,19 +214,24 @@ public class WebServer {
 
         this.server.requestHandler(
                 req -> {
-                    Instant start = Instant.now();
-                    req.response()
-                            .endHandler(
-                                    (res) ->
-                                            logger.info(
-                                                    "({}): {} {} {} {}ms",
-                                                    req.remoteAddress().toString(),
-                                                    req.method().toString(),
-                                                    req.path(),
-                                                    req.response().getStatusCode(),
-                                                    Duration.between(start, Instant.now())
-                                                            .toMillis()));
-                    router.handle(req);
+                    Span span = tracer.spanBuilder("WebServer Request Handler").startSpan();
+                    try (Scope scope = span.makeCurrent()) {
+                        Instant start = Instant.now();
+                        req.response()
+                                .endHandler(
+                                        (res) ->
+                                                logger.info(
+                                                        "({}): {} {} {} {}ms",
+                                                        req.remoteAddress().toString(),
+                                                        req.method().toString(),
+                                                        req.path(),
+                                                        req.response().getStatusCode(),
+                                                        Duration.between(start, Instant.now())
+                                                                .toMillis()));
+                        router.handle(req);
+                    } finally {
+                        span.end();
+                    }
                 });
     }
 

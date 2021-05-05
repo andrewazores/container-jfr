@@ -42,8 +42,7 @@ import java.util.List;
 
 import javax.management.remote.JMXServiceURL;
 
-import io.cryostat.MainModule;
-import io.cryostat.core.log.Logger;
+import io.cryostat.TestModule;
 import io.cryostat.core.net.JFRConnectionToolkit;
 import io.cryostat.net.AuthManager;
 import io.cryostat.platform.PlatformClient;
@@ -72,9 +71,8 @@ class TargetsGetHandlerTest {
     TargetsGetHandler handler;
     @Mock AuthManager auth;
     @Mock PlatformClient platformClient;
-    @Mock Logger logger;
     @Mock JFRConnectionToolkit connectionToolkit;
-    Gson gson = MainModule.provideGson(logger);
+    Gson gson = TestModule.provideGson();
 
     @BeforeEach
     void setup() {

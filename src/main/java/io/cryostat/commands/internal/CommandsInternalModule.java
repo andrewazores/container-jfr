@@ -39,7 +39,6 @@ package io.cryostat.commands.internal;
 
 import java.util.Set;
 
-import javax.annotation.Nullable;
 import javax.inject.Singleton;
 
 import org.openjdk.jmc.flightrecorder.configuration.recording.RecordingOptionsBuilder;
@@ -109,7 +108,6 @@ public abstract class CommandsInternalModule {
     }
 
     @Provides
-    @Nullable
     @Singleton
     static CommandRegistry provideCommandRegistry(Set<Command> commands, Logger logger) {
         return new CommandRegistryImpl(commands, logger);

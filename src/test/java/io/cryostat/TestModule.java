@@ -35,63 +35,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.net.web.http.api.v1;
+package io.cryostat;
 
-import javax.inject.Inject;
-
-import io.cryostat.net.AuthManager;
-import io.cryostat.net.web.http.AbstractAuthenticatedRequestHandler;
-import io.cryostat.net.web.http.api.ApiVersion;
-import io.cryostat.platform.PlatformClient;
+import io.cryostat.core.log.Logger;
 
 import com.google.gson.Gson;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Scope;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.ext.web.RoutingContext;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
+import io.opentelemetry.context.propagation.ContextPropagators;
+import io.opentelemetry.exporter.logging.LoggingSpanExporter;
+import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
+import io.opentelemetry.sdk.trace.samplers.Sampler;
 
-class TargetsGetHandler extends AbstractAuthenticatedRequestHandler {
-
-    private final PlatformClient platformClient;
-    private final Gson gson;
-    private final Tracer tracer;
-
-    @Inject
-    TargetsGetHandler(AuthManager auth, PlatformClient platformClient, Gson gson) {
-        super(auth);
-        this.platformClient = platformClient;
-        this.gson = gson;
-        this.tracer = telemetry.getTracer(getClass().getCanonicalName());
+public class TestModule {
+    public static Gson provideGson() {
+        return MainModule.provideGson(Logger.INSTANCE);
     }
 
-    @Override
-    public ApiVersion apiVersion() {
-        return ApiVersion.V1;
-    }
+    public static OpenTelemetry provideOpenTelemetry() {
+        SdkTracerProvider sdkTracerProvider =
+                SdkTracerProvider.builder()
+                        .setSampler(Sampler.alwaysOn())
+                        .addSpanProcessor(SimpleSpanProcessor.create(new LoggingSpanExporter()))
+                        .build();
 
-    @Override
-    public HttpMethod httpMethod() {
-        return HttpMethod.GET;
-    }
-
-    @Override
-    public String path() {
-        return basePath() + "targets";
-    }
-
-    @Override
-    public boolean isAsync() {
-        return false;
-    }
-
-    @Override
-    public void handleAuthenticated(RoutingContext ctx) throws Exception {
-        Span span = tracer.spanBuilder("WebServer Request Handler").startSpan();
-        try (Scope scope = span.makeCurrent()) {
-            ctx.response().end(gson.toJson(this.platformClient.listDiscoverableServices()));
-        } finally {
-            span.end();
-        }
+        return OpenTelemetrySdk.builder()
+                .setTracerProvider(sdkTracerProvider)
+                .setPropagators(ContextPropagators.create(W3CTraceContextPropagator.getInstance()))
+                .build();
     }
 }

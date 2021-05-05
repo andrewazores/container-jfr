@@ -47,17 +47,22 @@ import java.util.regex.Pattern;
 
 import javax.security.sasl.SaslException;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openjdk.jmc.rjmx.ConnectionException;
 
+import io.cryostat.MainModule;
 import io.cryostat.core.net.Credentials;
 import io.cryostat.net.AuthManager;
 import io.cryostat.net.ConnectionDescriptor;
-
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Scope;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.impl.HttpStatusException;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 
 public abstract class AbstractAuthenticatedRequestHandler implements RequestHandler {
 
@@ -67,23 +72,36 @@ public abstract class AbstractAuthenticatedRequestHandler implements RequestHand
     public static final String JMX_AUTHORIZATION_HEADER = "X-JMX-Authorization";
 
     protected final AuthManager auth;
+    protected final OpenTelemetry telemetry;
+    protected final Tracer tracer;
 
+    @Deprecated
     protected AbstractAuthenticatedRequestHandler(AuthManager auth) {
+        this(auth, MainModule.nonDIProvideOpenTelemetry());
+    }
+
+    protected AbstractAuthenticatedRequestHandler(AuthManager auth, OpenTelemetry telemetry) {
         this.auth = auth;
+        this.telemetry = telemetry;
+        this.tracer = telemetry.getTracer(getClass().getCanonicalName());
     }
 
     public abstract void handleAuthenticated(RoutingContext ctx) throws Exception;
 
     @Override
     public void handle(RoutingContext ctx) {
-        try {
+        Span span = tracer.spanBuilder("HTTP Handler").startSpan();
+        try (Scope scope = span.makeCurrent()) {
             if (!validateRequestAuthorization(ctx.request()).get()) {
                 throw new HttpStatusException(401);
             }
             handleAuthenticated(ctx);
+            span.setStatus(StatusCode.OK);
         } catch (HttpStatusException e) {
+            span.setStatus(StatusCode.ERROR, e.getMessage());
             throw e;
         } catch (ConnectionException e) {
+            span.setStatus(StatusCode.ERROR, e.getMessage());
             Throwable cause = e.getCause();
             if (cause instanceof SecurityException || cause instanceof SaslException) {
                 ctx.response().putHeader(JMX_AUTHENTICATE_HEADER, "Basic");
@@ -98,7 +116,10 @@ public abstract class AbstractAuthenticatedRequestHandler implements RequestHand
             }
             throw new HttpStatusException(500, e);
         } catch (Exception e) {
+            span.setStatus(StatusCode.ERROR, e.getMessage());
             throw new HttpStatusException(500, e.getMessage(), e);
+        } finally {
+            span.end();
         }
     }
 
