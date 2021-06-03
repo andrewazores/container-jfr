@@ -128,6 +128,12 @@
     <version>${io.vertx.web.version}</version>
   </dependency>
   <dependency>
+    <groupId>io.netty</groupId>
+    <artifactId>netty-transport-native-epoll</artifactId>
+    <classifier>linux-x86_64</classifier>
+    <version>4.1.60.Final</version>
+  </dependency>
+  <dependency>
     <groupId>org.slf4j</groupId>
     <artifactId>slf4j-jdk14</artifactId>
     <version>${org.slf4j.version}</version>

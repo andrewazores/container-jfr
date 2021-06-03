@@ -73,6 +73,8 @@ if ! podman pod exists cryostat; then
         --publish $CRYOSTAT_EXT_WEB_PORT:$CRYOSTAT_WEB_PORT
 fi
 
+# $ podman system service -t 0 , to create the podman.sock to volume mount
+# uid 185 is used within the container currently but this may change - can we determine it beforehand rather than hardcoding?
 podman run \
     --pod cryostat \
     --mount type=tmpfs,target=/flightrecordings \
@@ -80,6 +82,7 @@ podman run \
     --mount type=bind,source="$(dirname $0)/truststore",destination=/truststore,relabel=shared,bind-propagation=shared \
     --mount type=bind,source="$(dirname $0)/certs",destination=/certs,relabel=shared,bind-propagation=shared \
     --mount type=bind,source="$(dirname $0)/clientlib",destination=/clientlib,relabel=shared,bind-propagation=shared \
+    -v "$XDG_RUNTIME_DIR"/podman/podman.sock:/run/user/185/podman/podman.sock:Z \
     -e CRYOSTAT_PLATFORM=$CRYOSTAT_PLATFORM \
     -e CRYOSTAT_DISABLE_SSL=$CRYOSTAT_DISABLE_SSL \
     -e CRYOSTAT_DISABLE_JMX_AUTH=$CRYOSTAT_DISABLE_JMX_AUTH \
