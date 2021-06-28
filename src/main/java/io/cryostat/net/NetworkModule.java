@@ -165,4 +165,17 @@ public abstract class NetworkModule {
     @Binds
     @IntoSet
     abstract AuthManager bindOpenShiftAuthManager(OpenShiftAuthManager mgr);
+
+    @Provides
+    @Singleton
+    static ClientCachingOpenShiftAuthManager provideClientCachingOpenShiftAuthManager(
+            Logger logger, FileSystem fs) {
+        return new ClientCachingOpenShiftAuthManager(
+                logger, fs, ClientCachingOpenShiftAuthManager.DEFAULT_TTL);
+    }
+
+    @Binds
+    @IntoSet
+    abstract AuthManager bindClientCachingOpenShiftAuthManager(
+            ClientCachingOpenShiftAuthManager mgr);
 }
