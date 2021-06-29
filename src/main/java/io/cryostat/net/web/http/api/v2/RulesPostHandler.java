@@ -123,9 +123,11 @@ class RulesPostHandler extends AbstractV2RequestHandler<String> {
                                 .name(
                                         params.getFormAttributes()
                                                 .get(Rule.Attribute.NAME.getSerialKey()))
-                                .targetAlias(
+                                .matchExpression(
                                         params.getFormAttributes()
-                                                .get(Rule.Attribute.TARGET_ALIAS.getSerialKey()))
+                                                .get(
+                                                        Rule.Attribute.MATCH_EXPRESSION
+                                                                .getSerialKey()))
                                 .description(
                                         params.getFormAttributes()
                                                 .get(Rule.Attribute.DESCRIPTION.getSerialKey()))

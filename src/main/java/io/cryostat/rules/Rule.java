@@ -45,10 +45,7 @@ public class Rule {
 
     private final String name;
     private final String description;
-    // TODO for now, simply allow matching based on target's alias. This should be expanded to allow
-    // for different match parameters such as port number, port name, container/pod label, etc.,
-    //  and allow wildcards
-    private final String targetAlias;
+    private final String matchExpression;
     private final String eventSpecifier;
     private final int archivalPeriodSeconds;
     private final int preservedArchives;
@@ -58,7 +55,7 @@ public class Rule {
     Rule(Builder builder) {
         this.name = sanitizeRuleName(requireNonBlank(builder.name, Attribute.NAME));
         this.description = builder.description == null ? "" : builder.description;
-        this.targetAlias = requireNonBlank(builder.targetAlias, Attribute.TARGET_ALIAS);
+        this.matchExpression = requireNonBlank(builder.matchExpression, Attribute.MATCH_EXPRESSION);
         this.eventSpecifier = requireNonBlank(builder.eventSpecifier, Attribute.EVENT_SPECIFIER);
         this.archivalPeriodSeconds =
                 requireNonNegative(
@@ -83,8 +80,8 @@ public class Rule {
         return this.description;
     }
 
-    public String getTargetAlias() {
-        return this.targetAlias;
+    public String getMatchExpression() {
+        return this.matchExpression;
     }
 
     public String getEventSpecifier() {
@@ -141,7 +138,7 @@ public class Rule {
     public static class Builder {
         private String name;
         private String description;
-        private String targetAlias;
+        private String matchExpression;
         private String eventSpecifier;
         private int archivalPeriodSeconds = 30;
         private int preservedArchives = 1;
@@ -158,8 +155,8 @@ public class Rule {
             return this;
         }
 
-        public Builder targetAlias(String targetAlias) {
-            this.targetAlias = targetAlias;
+        public Builder matchExpression(String matchExpression) {
+            this.matchExpression = matchExpression;
             return this;
         }
 
@@ -196,7 +193,7 @@ public class Rule {
     public enum Attribute {
         NAME("name"),
         DESCRIPTION("description"),
-        TARGET_ALIAS("targetAlias"),
+        MATCH_EXPRESSION("matchExpression"),
         EVENT_SPECIFIER("eventSpecifier"),
         ARCHIVAL_PERIOD_SECONDS("archivalPeriodSeconds"),
         PRESERVED_ARCHIVES("preservedArchives"),
