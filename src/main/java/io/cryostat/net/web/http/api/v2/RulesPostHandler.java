@@ -47,6 +47,7 @@ import io.cryostat.net.AuthManager;
 import io.cryostat.net.web.http.HttpMimeType;
 import io.cryostat.net.web.http.api.ApiVersion;
 import io.cryostat.rules.Rule;
+import io.cryostat.rules.Rule.RuleMatchExpressionParseException;
 import io.cryostat.rules.RuleRegistry;
 
 import com.google.gson.Gson;
@@ -144,7 +145,9 @@ class RulesPostHandler extends AbstractV2RequestHandler<String> {
 
                 try {
                     rule = builder.build();
-                } catch (IllegalArgumentException iae) {
+                } catch (IOException
+                        | RuleMatchExpressionParseException
+                        | IllegalArgumentException iae) {
                     throw new ApiException(400, iae);
                 }
                 break;
