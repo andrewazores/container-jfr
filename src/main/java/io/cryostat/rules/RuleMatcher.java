@@ -38,30 +38,42 @@
 package io.cryostat.rules;
 
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.script.Bindings;
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
 
 import io.cryostat.platform.ServiceRef;
 
 import com.google.gson.Gson;
+import delight.nashornsandbox.NashornSandbox;
+import delight.nashornsandbox.NashornSandboxes;
 
 class RuleMatcher {
 
-    private final ScriptEngine scriptEngine;
+    private final NashornSandbox sandbox;
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Gson gson = new Gson();
 
     RuleMatcher() {
-        this.scriptEngine = new ScriptEngineManager().getEngineByName("nashorn");
+        this.sandbox = NashornSandboxes.create();
+        this.sandbox.setExecutor(executor);
+        this.sandbox.setMaxCPUTime(250);
+        this.sandbox.allowNoBraces(true);
+        this.sandbox.allowExitFunctions(false);
+        this.sandbox.allowLoadFunctions(false);
+        this.sandbox.allowReadFunctions(false);
+        this.sandbox.allowGlobalsObjects(false);
+        this.sandbox.allowPrintFunctions(true);
+        this.sandbox.setMaxPreparedStatements(50);
     }
 
     public boolean applies(Rule rule, ServiceRef serviceRef) {
-        Bindings bindings = this.scriptEngine.createBindings();
+        Bindings bindings = this.sandbox.createBindings();
         // FIXME don't use Gson for this, just directly convert the ServiceRef to a Map
         bindings.put("target", gson.fromJson(gson.toJson(serviceRef), Map.class));
         try {
-            Object result = this.scriptEngine.eval(rule.getMatchExpression(), bindings);
+            Object result = this.sandbox.eval(rule.getMatchExpression(), bindings);
             if (result instanceof Boolean) {
                 return (Boolean) result;
             } else {

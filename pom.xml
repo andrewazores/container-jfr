@@ -103,6 +103,11 @@
     <version>${com.google.dagger.version}</version>
   </dependency>
   <dependency>
+    <groupId>org.javadelight</groupId>
+    <artifactId>delight-nashorn-sandbox</artifactId>
+    <version>0.2.1</version>
+  </dependency>
+  <dependency>
     <groupId>org.apache.commons</groupId>
     <artifactId>commons-lang3</artifactId>
     <version>${org.apache.commons.lang3.version}</version>
